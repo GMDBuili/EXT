@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Pong Clásico</title>
+    <style>
+        body { background-color: #222; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white; font-family: Arial, sans-serif; flex-direction: column; }
+        canvas { border: 5px solid #fff; background-color: #000; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        h1 { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>PONG</h1>
+    <canvas id="pongCanvas" width="800" height="400"></canvas>
+    <p>Usa las teclas <b>W / S</b> para moverte</p>
+
+    <script>
+        const canvas = document.getElementById("pongCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Configuración de los objetos
+        const paddleWidth = 10, paddleHeight = 80;
+        let user = { x: 0, y: canvas.height/2 - paddleHeight/2, score: 0 };
+        let cpu = { x: canvas.width - paddleWidth, y: canvas.height/2 - paddleHeight/2, score: 0 };
+        let ball = { x: canvas.width/2, y: canvas.height/2, radius: 7, speed: 5, velocityX: 5, velocityY: 5 };
+
+        // Control del usuario
+        let upPressed = false;
+        let downPressed = false;
+
+        document.addEventListener("keydown", (e) => {
+            if(e.key === "w" || e.key === "W") upPressed = true;
+            if(e.key === "s" || e.key === "S") downPressed = true;
+        });
+        document.addEventListener("keyup", (e) => {
+            if(e.key === "w" || e.key === "W") upPressed = false;
+            if(e.key === "s" || e.key === "S") downPressed = false;
+        });
+
+        function drawRect(x, y, w, h, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+        }
+
+        function drawCircle(x, y, r, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI*2, false);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawText(text, x, y) {
+            ctx.fillStyle = "#FFF";
+            ctx.font = "45px Arial";
+            ctx.fillText(text, x, y);
+        }
+
+        function resetBall() {
+            ball.x = canvas.width/2;
+            ball.y = canvas.height/2;
+            ball.velocityX = -ball.velocityX;
+            ball.speed = 5;
+        }
+
+        function update() {
+            // Movimiento del jugador
+            if(upPressed && user.y > 0) user.y -= 8;
+            if(downPressed && user.y < canvas.height - paddleHeight) user.y += 8;
+
+            // Movimiento de la CPU (IA simple)
+            cpu.y += (ball.y - (cpu.y + paddleHeight/2)) * 0.1;
+
+            // Movimiento de la pelota
+            ball.x += ball.velocityX;
+            ball.y += ball.velocityY;
+
+            // Rebote en paredes superior/inferior
+            if(ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                ball.velocityY = -ball.velocityY;
+            }
+
+            // Determinar qué paleta está golpeando la pelota
+            let player = (ball.x < canvas.width/2) ? user : cpu;
+
+            if(collision(ball, player)) {
+                // Donde golpea la pelota en la paleta
+                let collidePoint = (ball.y - (player.y + paddleHeight/2));
+                collidePoint = collidePoint / (paddleHeight/2);
+                
+                // Ángulo de rebote
+                let angleRad = (Math.PI/4) * collidePoint;
+                let direction = (ball.x < canvas.width/2) ? 1 : -1;
+
+                ball.velocityX = direction * ball.speed * Math.cos(angleRad);
+                ball.velocityY = ball.speed * Math.sin(angleRad);
+                
+                // Aumentar velocidad gradualmente
+                ball.speed += 0.5;
+            }
+
+            // Puntuación
+            if(ball.x - ball.radius < 0) {
+                cpu.score++;
+                resetBall();
+            } else if(ball.x + ball.radius > canvas.width) {
+                user.score++;
+                resetBall();
+            }
+        }
+
+        function collision(b, p) {
+            return b.x + b.radius > p.x && b.x - b.radius < p.x + paddleWidth &&
+                   b.y + b.radius > p.y && b.y - b.radius < p.y + paddleHeight;
+        }
+
+        function render() {
+            drawRect(0, 0, canvas.width, canvas.height, "#000"); // Fondo
+            drawText(user.score, canvas.width/4, canvas.height/5);
+            drawText(cpu.score, 3*canvas.width/4, canvas.height/5);
+            drawRect(user.x, user.y, paddleWidth, paddleHeight, "#FFF");
+            drawRect(cpu.x, cpu.y, paddleWidth, paddleHeight, "#FFF");
+            drawCircle(ball.x, ball.y, ball.radius, "#FFF");
+            
+            // Línea central
+            for(let i=0; i<=canvas.height; i+=20) {
+                drawRect(canvas.width/2 - 1, i, 2, 10, "#FFF");
+            }
+        }
+
+        function game() {
+            update();
+            render();
+        }
+
+        setInterval(game, 1000/60); // 60 FPS
+    </script>
+</body>
+</html>
